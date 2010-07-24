@@ -72,20 +72,36 @@ T.Tetromino = function (shape) {
     this.h = y;
 };
 
-T.Tetromino.prototype.render = function (ctx) {
-    ctx.save();
-    ctx.translate(this.x * T.CELL_W, this.y * T.CELL_H);
-    for (var i in this.tiles) {
-        this.tiles[i].render(ctx);
+T.Tetromino.prototype = {
+    
+    render: function (ctx) {
+        ctx.save();
+        ctx.translate(this.x * T.CELL_W, this.y * T.CELL_H);
+        this.tiles.forEach(function (tile) {
+            tile.render(ctx);
+        });
+        ctx.restore();
+    },
+
+    collidesWith: function (tile) {
+        var thisX = this.x, thisY = this.y;
+        return (
+            // bounds check
+            thisX <= tile.x && tile.x <= thisX + this.w &&
+            thisY <= tile.y && tile.y <= thisY + this.h &&
+            // per-tile check
+            this.tiles.some(function (tile2) {
+                return tile.x === thisX + tile2.x && tile.y === thisY + tile2.y;
+            }));
+    },
+
+    toString: function () {
+        return 'Tetromino[shape=' + this.shape + ',x=' + this.x + ',y=' + this.y +
+            ',w=' + this.w + ',h=' + this.h + ']';
     }
-    ctx.restore();
 };
 
-T.Tetromino.prototype.toString = function () {
-    return 'Tetromino[shape=' + this.shape + ',x=' + this.x + ',y=' + this.y +
-           ',w=' + this.w + ',h=' + this.h + ']';
+T.Tetromino.random = function () {
+    var shapes = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+    return new T.Tetromino(shapes[Math.floor(Math.random() * shapes.length)]);
 };
-
-T.Tetromino.archetypes = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'].map(function (shape) {
-    return new T.Tetromino(shape);
-});

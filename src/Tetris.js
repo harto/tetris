@@ -4,13 +4,16 @@
 
 /*global $, window */
 
-// define ns
+// define ns, globals
 var T = {
     KEY_MAPPINGS: {
-        rotate: 38,
-        drop: 40,
-        left: 37,
-        right: 39
+        PAUSE: 32,
+        P1: {
+            ROTATE: 38,
+            DROP: 40,
+            LEFT: 37,
+            RIGHT: 39
+        }
     },
     REFRESH_HZ: 12
 };
@@ -24,18 +27,38 @@ $(function () {
     T.CELL_W = canvas.width / nCols;
     T.CELL_H = canvas.height / nRows;
 
-    T.field = new T.Field(nCols, nRows, T.KEY_MAPPINGS);
-
-    var ctx = canvas.getContext('2d');
-    function render() {
-        T.field.render(ctx);
-    }
+    T.field = new T.Field(nCols, nRows, T.KEY_MAPPINGS.P1);
 
     $(window).keydown(function (e) {
+        if (e.which === T.KEY_MAPPINGS.PAUSE) {
+            T.paused = !T.paused;
+            e.preventDefault();
+        }
+        // per-field handlers
         if (T.field.handleKeydown(e.which)) {
             e.preventDefault();
         }
     });
 
-    var renderLoop = window.setInterval(render, 1000 / T.REFRESH_HZ);
+    var looper;
+    var lastLoop = new Date().getTime();
+    var ctx = canvas.getContext('2d');
+
+    function loop() {
+        if (T.field.full) {
+            // game over
+            looper = null;
+            return;
+        }
+        
+        var now = new Date();
+        if (!T.paused) {
+            T.field.update(now - lastLoop);
+        }
+        lastLoop = now;
+        
+        T.field.render(ctx);
+    }
+
+    looper = window.setInterval(loop, 1000 / T.REFRESH_HZ);
 });
