@@ -20,6 +20,7 @@ var T = {
 
 $(function () {
     var canvas = $('canvas').get(0);
+    var ctx = canvas.getContext('2d');
 
     var nRows = 20;
     var nCols = 10;
@@ -40,25 +41,27 @@ $(function () {
         }
     });
 
-    var looper;
-    var lastLoop = new Date().getTime();
-    var ctx = canvas.getContext('2d');
+    var timer;
+    var delay = 1000 / T.REFRESH_HZ;
+    var lastLoopTime = new Date().getTime();
 
     function loop() {
-        if (T.field.full) {
-            // game over
-            looper = null;
-            return;
-        }
-        
         var now = new Date();
         if (!T.paused) {
-            T.field.update(now - lastLoop);
+            // process events (FIXME)
+            T.field.update(now - lastLoopTime);
         }
-        lastLoop = now;
+        lastLoopTime = now;
         
         T.field.render(ctx);
+        
+        if (T.field.full) {
+            // game over
+            return;
+        } else {
+            timer = window.setTimeout(loop, delay);
+        }
     }
 
-    looper = window.setInterval(loop, 1000 / T.REFRESH_HZ);
+    timer = window.setTimeout(loop, delay);
 });
