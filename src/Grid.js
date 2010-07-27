@@ -141,5 +141,5 @@ T.Grid.prototype = {
         });
 
         this.current = this.fetchNext();
-    },
+    }
 };
