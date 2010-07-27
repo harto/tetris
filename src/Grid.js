@@ -4,7 +4,7 @@
 
 /*global T */
 
-T.Field = function (w, h, keyMappings) {
+T.Grid = function (w, h, keyMappings) {
     this.w = w;
     this.h = h;
     this.keyMappings = keyMappings;
@@ -21,7 +21,7 @@ T.Field = function (w, h, keyMappings) {
     this.current = this.fetchNext();
 };
 
-T.Field.prototype = {
+T.Grid.prototype = {
     render: function (ctx) {
         ctx.save();
 

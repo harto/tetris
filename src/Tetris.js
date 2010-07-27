@@ -28,15 +28,15 @@ $(function () {
     T.CELL_W = canvas.width / nCols;
     T.CELL_H = canvas.height / nRows;
 
-    T.field = new T.Field(nCols, nRows, T.KEY_MAPPINGS.P1);
+    T.grid = new T.Grid(nCols, nRows, T.KEY_MAPPINGS.P1);
 
     $(window).keydown(function (e) {
         if (e.which === T.KEY_MAPPINGS.PAUSE) {
             T.paused = !T.paused;
             e.preventDefault();
         }
-        // per-field handlers
-        if (T.field.handleKeydown(e.which)) {
+        // per-grid handlers
+        if (T.grid.handleKeydown(e.which)) {
             e.preventDefault();
         }
     });
@@ -49,13 +49,13 @@ $(function () {
         var now = new Date();
         if (!T.paused) {
             // process events (FIXME)
-            T.field.update(now - lastLoopTime);
+            T.grid.update(now - lastLoopTime);
         }
         lastLoopTime = now;
         
-        T.field.render(ctx);
+        T.grid.render(ctx);
         
-        if (T.field.full) {
+        if (T.grid.full) {
             // game over
             return;
         } else {
