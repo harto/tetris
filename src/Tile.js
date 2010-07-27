@@ -1,3 +1,7 @@
+/*
+ * An individual tile. Tiles make up a tetronimos and fill the grid.
+ */
+
 /*global T */
 
 T.Tile = function (x, y, colour) {

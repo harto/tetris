@@ -7,7 +7,6 @@
 T.Grid = function (w, h, keyMappings) {
     this.w = w;
     this.h = h;
-    this.keyMappings = keyMappings;
 
     this.msSinceLastStep = 0;
 
@@ -22,6 +21,7 @@ T.Grid = function (w, h, keyMappings) {
 };
 
 T.Grid.prototype = {
+    
     render: function (ctx) {
         ctx.save();
 
@@ -42,31 +42,35 @@ T.Grid.prototype = {
             return;
         }
 
-        if (!this.move(this.current, 0, 1)) {
-            this.land(this.current);
+        if (!this.move(0, 1)) {
+            this.land();
         }
         
         this.msSinceLastStep = 0;
     },
 
-    validPosition: function (t) {
+    // check that a piece is in a valid position
+    valid: function (tetro) {
         return !(
-            t.x < 0 || this.w < t.x + t.w ||
-            t.y < 0 || this.h < t.y + t.h ||
+            tetro.x < 0 || this.w < tetro.x + tetro.w ||
+            tetro.y < 0 || this.h < tetro.y + tetro.h ||
             this.tiles.some(function (tile) {
-                return t.collidesWith(tile);
+                return tetro.collidesWith(tile);
             }));
     },
 
-    move: function (t, dx, dy) {
-        t.x += dx;
-        t.y += dy;
+    // attempt move and return flag indicating move validity
+    move: function (dx, dy) {
+        var current = this.current;
 
-        if (this.validPosition(t)) {
+        current.x += dx;
+        current.y += dy;
+
+        if (this.valid(current)) {
             return true;
         } else {
-            t.x -= dx;
-            t.y -= dy;
+            current.x -= dx;
+            current.y -= dy;
             return false;
         }
     },
@@ -74,30 +78,34 @@ T.Grid.prototype = {
     fetchNext: function () {
         var next = this.queue.shift();
         this.queue.push(T.Tetromino.random());
+        
         next.x = Math.floor((this.w - next.w) / 2);
         next.y = 0;
-        if (this.validPosition(next)) {
+        
+        if (this.valid(next)) {
             return next;
         } else {
             this.full = true;
+            // prevent rendering in invalid position
             return null;
         }
     },
 
-    drop: function (t) {
-        while (this.move(t, 0, 1)) {
-            // keep going
+    drop: function () {
+        while (this.move(0, 1)) {
+            // to the bottom
         }
-        this.land(t);
+        this.land();
     },
 
-    land: function (t) {
+    land: function () {
+        var current = this.current;
         // consume tiles
         var tiles = this.tiles;
-        t.tiles.forEach(function (tile) {
+        current.tiles.forEach(function (tile) {
             tiles.push(tile);
-            tile.x += t.x;
-            tile.y += t.y;
+            tile.x += current.x;
+            tile.y += current.y;
         });
 
         // find full rows
@@ -134,27 +142,4 @@ T.Grid.prototype = {
 
         this.current = this.fetchNext();
     },
-
-    handleKeydown: function (keyCode) {
-        switch (keyCode) {
-        case this.keyMappings.ROTATE:
-            //console.log('rotate');
-            break;
-        case this.keyMappings.DROP:
-            //console.log('drop');
-            this.drop(this.current);
-            break;
-        case this.keyMappings.LEFT:
-            //console.log('left');
-            this.move(this.current, -1, 0);
-            break;
-        case this.keyMappings.RIGHT:
-            //console.log('right');
-            this.move(this.current, 1, 0);
-            break;
-        default:
-            return false;
-        }
-        return true;
-    }
 };

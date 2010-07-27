@@ -1,3 +1,7 @@
+/*
+ * A single piece.
+ */
+
 /*global T */
 
 T.Tetromino = function (shape) {
