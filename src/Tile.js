@@ -1,5 +1,5 @@
 /*
- * An individual tile. Tiles make up tetronimos and fill the grid.
+ * An individual tile. Tiles make up tetrominos and fill the grid.
  */
 
 /*global T */
