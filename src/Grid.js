@@ -108,38 +108,34 @@ T.Grid.prototype = {
             tile.y += current.y;
         });
 
-        // find full rows
-        var tileCounts = [];
-        var nMaxRowTiles = this.w;
-        var eliminatedRowIds = [];
+        // organise into rows
+        var rows = [];
         tiles.forEach(function (tile) {
             var rowId = tile.y;
-            tileCounts[rowId] = (tileCounts[rowId] || 0) + 1;
-            if (tileCounts[rowId] === nMaxRowTiles) {
-                eliminatedRowIds.push(rowId);
-            }
-        });
-        
-        // remove eliminated tiles
-        eliminatedRowIds.forEach(function (rowId) {
-            tiles = tiles.filter(function (tile) {
-                return tile.y !== rowId;
-            });
-        });
-        this.tiles = tiles;
-        
-        // compact remaining tiles
-        eliminatedRowIds.sort(function (a, b) {
-            return a - b;
-        });
-        eliminatedRowIds.forEach(function (rowId) {
-            tiles.forEach(function (tile) {
-                if (tile.y < rowId) {
-                    tile.y++;
-                }
-            });
+            var row = rows[rowId] || [];
+            row.push(tile);
+            rows[rowId] = row;
         });
 
+        // eliminate full rows
+        rows.reverse();
+        tiles = [];
+        var nEliminated = 0;
+        var nMaxRowTiles = this.w;
+        rows.forEach(function (row) {
+            if (row.length < nMaxRowTiles) {
+                // shift tiles downwards
+                row.forEach(function (tile) {
+                    tile.y += nEliminated;
+                });
+                // keep this row
+                tiles = tiles.concat(row);
+            } else {
+                nEliminated++;
+            }
+        });
+
+        this.tiles = tiles;
         this.current = this.fetchNext();
     }
 };
