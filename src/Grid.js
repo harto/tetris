@@ -147,15 +147,15 @@ T.Grid.prototype = {
         var nEliminated = 0;
         var nMaxRowTiles = this.w;
         rows.forEach(function (row) {
-            if (row.length < nMaxRowTiles) {
-                // shift tiles downwards
-                row.forEach(function (tile) {
-                    tile.y += nEliminated;
-                });
-                // keep this row
-                tiles = tiles.concat(row);
-            } else {
+            if (row.length === nMaxRowTiles) {
                 nEliminated++;
+            } else {
+                row.forEach(function (tile) {
+                    // shift tiles downwards
+                    tile.y += nEliminated;
+                    // re-add to master collection
+                    tiles.push(tile);
+                });
             }
         });
 
