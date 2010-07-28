@@ -15,7 +15,8 @@ var T = {
             right: 39        
         }
     },
-    refreshHz: 12
+    refreshHz: 12,
+    debug: true
 };
 
 $(function () {
@@ -58,19 +59,16 @@ $(function () {
         var keys = T.keys.game;
         switch (keycode) {
         case keys.rotate:
-            //console.log('rotate');
+            T.grid.rotateCurrent();
             break;
         case keys.drop:
-            //console.log('drop');
-            T.grid.drop();
+            T.grid.dropCurrent();
             break;
         case keys.left:
-            //console.log('left');
-            T.grid.move(-1, 0);
+            T.grid.moveCurrent(-1, 0);
             break;
         case keys.right:
-            //console.log('right');
-            T.grid.move(1, 0);
+            T.grid.moveCurrent(1, 0);
             break;
         default:
             throw new Error('unmapped keycode: ' + keycode);
@@ -88,7 +86,7 @@ $(function () {
             while ((keycode = commandQueue.shift())) {
                 executeCommand(keycode);
             }
-            T.grid.update(now - lastLoopTime);
+            //T.grid.update(now - lastLoopTime);
         }
         lastLoopTime = now;
         

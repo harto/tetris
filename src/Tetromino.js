@@ -81,10 +81,34 @@ T.Tetromino.prototype = {
     render: function (ctx) {
         ctx.save();
         ctx.translate(this.x * T.CELL_W, this.y * T.CELL_H);
+        
+        if (T.debug) {
+            ctx.strokeStyle = '#000';
+            ctx.strokeRect(0, 0, this.w * T.CELL_W, this.h * T.CELL_H);
+        }
+        
         this.tiles.forEach(function (tile) {
             tile.render(ctx);
         });
         ctx.restore();
+    },
+
+    rotate: function () {
+        var axis = Vector.create([this.w / 2, this.h / 2]);
+        this.tiles.forEach(function (tile) {
+            var v = Vector.create([tile.x, tile.y]);
+            v = v.rotate(-Math.PI / 2, axis);
+            tile.x = v.e(1);//Math.floor(v.e(1));
+            tile.y = v.e(2);//Math.floor(v.e(2));
+        });
+
+        // update dimensions
+        this.w = Math.max.apply(null, this.tiles.map(function (tile) {
+            return tile.x;
+        })) + 1;
+        this.h = Math.max.apply(null, this.tiles.map(function (tile) {
+            return tile.y;
+        })) + 1;
     },
 
     collidesWith: function (tile) {

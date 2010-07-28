@@ -28,6 +28,25 @@ T.Grid.prototype = {
         ctx.fillStyle = '#FFF';
         ctx.fillRect(0, 0, this.w * T.CELL_W, this.h * T.CELL_H);
 
+        if (T.debug) {
+            // draw gridlines
+            function drawGridLine(x1, y1, x2, y2) {
+                ctx.beginPath();
+                ctx.moveTo(x1 * T.CELL_W, y1 * T.CELL_H);
+                ctx.lineTo(x2 * T.CELL_W, y2 * T.CELL_H);
+                ctx.stroke();
+                
+            }
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 0.5;
+            for (var x = 1; x < this.w; x++) {
+                drawGridLine(x, 0, x, this.h);
+            }
+            for (var y = 1; y < this.h; y++) {
+                drawGridLine(0, y, this.w, y);
+            }
+        }
+
         this.tiles.forEach(function (tile) {
             tile.render(ctx);
         });
@@ -42,11 +61,27 @@ T.Grid.prototype = {
             return;
         }
 
-        if (!this.move(0, 1)) {
-            this.land();
+        if (!this.moveCurrent(0, 1)) {
+            this.landCurrent();
         }
         
         this.msSinceLastStep = 0;
+    },
+
+    fetchNext: function () {
+        var next = this.queue.shift();
+        this.queue.push(T.Tetromino.random());
+        
+        next.x = Math.floor((this.w - next.w) / 2);
+        next.y = 2; // FIXME
+        
+        if (this.valid(next)) {
+            return next;
+        } else {
+            this.full = true;
+            // prevent rendering in invalid position
+            return null;
+        }
     },
 
     // check that a piece is in a valid position
@@ -59,8 +94,12 @@ T.Grid.prototype = {
             }));
     },
 
+    rotateCurrent: function () {
+        this.current.rotate();
+    },
+
     // attempt move and return flag indicating move validity
-    move: function (dx, dy) {
+    moveCurrent: function (dx, dy) {
         var current = this.current;
 
         current.x += dx;
@@ -75,31 +114,16 @@ T.Grid.prototype = {
         }
     },
 
-    fetchNext: function () {
-        var next = this.queue.shift();
-        this.queue.push(T.Tetromino.random());
-        
-        next.x = Math.floor((this.w - next.w) / 2);
-        next.y = 0;
-        
-        if (this.valid(next)) {
-            return next;
-        } else {
-            this.full = true;
-            // prevent rendering in invalid position
-            return null;
-        }
-    },
-
-    drop: function () {
-        while (this.move(0, 1)) {
+    dropCurrent: function () {
+        while (this.moveCurrent(0, 1)) {
             // to the bottom
         }
-        this.land();
+        this.landCurrent();
     },
 
-    land: function () {
+    landCurrent: function () {
         var current = this.current;
+
         // consume tiles
         var tiles = this.tiles;
         current.tiles.forEach(function (tile) {
