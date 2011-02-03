@@ -8,11 +8,10 @@
 
 var ROWS = 20,
     COLS = 10,
-    CELL_W,
-    CELL_H,
+    ROWS_PER_LEVEL = 10,
 
     REFRESH_HZ = 12,
-    DEBUG,// = true,
+    DEBUG = false,
 
     KEYS = {
         pause: 32,
@@ -22,8 +21,12 @@ var ROWS = 20,
         right: 39
     },
 
+    CELL_W,
+    CELL_H,
+
     grid,
     level = 0,
+    rowsRemaining = ROWS_PER_LEVEL,
     score = 0;
 
 /// misc
@@ -278,14 +281,15 @@ Grid.prototype = {
 
         // FIXME: should look nicer
         ctx.font = 'bold 10px Helvetica, Arial, sans-serif';
-        ctx.textAlign = 'right';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText(score, this.w * CELL_W - 5, 5);
+        ctx.fillText('Score: ' + score, 5, 5);
+        ctx.fillText('Level: ' + level, 5, 20);
     },
 
     update: function (delta) {
         this.msSinceLastStep += delta;
-        // TODO: should be based on current level
+        // TODO: speed should be based on current level
         if (this.msSinceLastStep < 500) {
             return;
         }
@@ -391,6 +395,13 @@ Grid.prototype = {
         });
 
         score += calcPoints(level, nRowsCleared, nRowsDropped || 0);
+
+        rowsRemaining -= nRowsCleared;
+        if (rowsRemaining <= 0) {
+            level++;
+            rowsRemaining = ROWS_PER_LEVEL;
+        }
+
         this.currentPiece = this.fetchNext();
     }
 };
