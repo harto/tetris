@@ -41,7 +41,7 @@ Tile.prototype = {
 
         if (DEBUG && this.isAxis) {
             ctx.strokeStyle = '#000';
-            ctx.lineWidth /= CELL_W;
+            ctx.lineWidth = 1 / CELL_W;
             ctx.drawLine(this.x, this.y, this.x + 1, this.y + 1);
             ctx.drawLine(this.x, this.y + 1, this.x + 1, this.y);
         }
@@ -180,22 +180,23 @@ Piece.prototype = {
         // recalculate position and dimensions based on new tile layout
 
         var xs = this.tiles.map(function (t) { return t.x; }),
-            minX = Math.min.apply(null, xs),
-            maxX = Math.max.apply(null, xs),
             ys = this.tiles.map(function (t) { return t.y; }),
-            minY = Math.min.apply(null, ys),
-            maxY = Math.max.apply(null, ys);
+            minX = Math.min.apply(null, xs),
+            minY = Math.min.apply(null, ys);
 
         this.x += minX;
         this.y += minY;
 
-        this.w = maxX - minX + 1;
-        this.h = maxY - minY + 1;
-
-        this.tiles.forEach(function (tile) {
-            tile.x -= minX;
-            tile.y -= minY;
+        this.tiles.forEach(function (t) {
+            t.x -= minX;
+            t.y -= minY;
         });
+
+        var tmp = this.w;
+        this.w = this.h;
+        this.h = tmp;
+
+        // TODO: need to check for illegal position after rotation
     },
 
     collidesWith: function (tile) {
@@ -211,8 +212,8 @@ Piece.prototype = {
     },
 
     toString: function () {
-        return 'Piece[shape=' + this.shape + ',x=' + this.x + ',y=' + this.y +
-               ',w=' + this.w + ',h=' + this.h + ']';
+        return 'Piece[shape=' + this.shape + ', x=' + this.x + ', y=' + this.y +
+               ', w=' + this.w + ', h=' + this.h + ']';
     }
 };
 
@@ -238,37 +239,39 @@ Grid.prototype = {
     draw: function (ctx) {
         ctx.save();
 
+        ctx.scale(CELL_W, CELL_H);
         ctx.fillStyle = '#FFF';
-        ctx.fillRect(0, 0, this.w * CELL_W, this.h * CELL_H);
+        ctx.fillRect(0, 0, this.w, this.h);
 
         if (DEBUG) {
             // draw gridlines
             ctx.strokeStyle = '#999';
-            ctx.lineWidth = 0.5;
+            ctx.lineWidth = 0.5 / CELL_W;
             for (var x = 1; x < this.w; x++) {
-                ctx.drawLine(x * CELL_W, 0, x * CELL_W, this.h * CELL_H);
+                ctx.drawLine(x, 0, x, this.h);
             }
             for (var y = 1; y < this.h; y++) {
-                ctx.drawLine(0, y * CELL_H, this.w * CELL_W, y * CELL_H);
+                ctx.drawLine(0, y, this.w, y);
             }
         }
 
-        this.tiles.forEach(function (tile) {
-            tile.draw(ctx);
+        ctx.restore();
+
+        this.tiles.forEach(function (t) {
+            t.draw(ctx);
         });
         this.currentPiece.draw(ctx);
-
-        ctx.restore();
     },
 
     update: function (delta) {
         this.msSinceLastStep += delta;
+        // TODO: should be based on current level
         if (this.msSinceLastStep < 500) {
             return;
         }
 
         if (!this.movePiece(0, 1)) {
-            this.landPiece();
+            this.consumePiece();
         }
 
         this.msSinceLastStep = 0;
@@ -279,8 +282,8 @@ Grid.prototype = {
         return !(
             piece.x < 0 || this.w < piece.x + piece.w ||
             piece.y < 0 || this.h < piece.y + piece.h ||
-            this.tiles.some(function (tile) {
-                return piece.collidesWith(tile);
+            this.tiles.some(function (t) {
+                return piece.collidesWith(t);
             }));
     },
 
@@ -290,17 +293,17 @@ Grid.prototype = {
 
     // attempt move and return flag indicating move validity
     movePiece: function (dx, dy) {
-        var currentPiece = this.currentPiece;
+        var piece = this.currentPiece;
 
-        currentPiece.x += dx;
-        currentPiece.y += dy;
+        piece.x += dx;
+        piece.y += dy;
 
-        if (this.validPos(currentPiece)) {
+        if (this.validPos(piece)) {
             return true;
         } else {
             // rollback
-            currentPiece.x -= dx;
-            currentPiece.y -= dy;
+            piece.x -= dx;
+            piece.y -= dy;
             return false;
         }
     },
@@ -324,29 +327,29 @@ Grid.prototype = {
         while (this.movePiece(0, 1)) {
             // to the bottom
         }
-        this.landPiece();
+        this.consumePiece();
     },
 
-    landPiece: function () {
-        var currentPiece = this.currentPiece;
+    consumePiece: function () {
+        var piece = this.currentPiece;
         // consume tiles
         var tiles = this.tiles;
-        currentPiece.tiles.forEach(function (tile) {
-            tiles.push(tile);
-            tile.x += currentPiece.x;
-            tile.y += currentPiece.y;
+        piece.tiles.forEach(function (t) {
+            tiles.push(t);
+            t.x += piece.x;
+            t.y += piece.y;
         });
 
-        /* group tiles into rows, eliminating full rows bottom to
-           top, shifting subsequent rows downwards */
+        /* group tiles into rows, eliminate full rows working from bottom to
+           top, shift subsequent rows downwards */
 
         var rows = [];
-        tiles.forEach(function (tile) {
-            var y = tile.y;
+        tiles.forEach(function (t) {
+            var y = t.y;
             if (!rows[y]) {
                 rows[y] = [];
             }
-            rows[y].push(tile);
+            rows[y].push(t);
         });
 
         rows.reverse();
@@ -357,11 +360,11 @@ Grid.prototype = {
             if (row.length === nMaxRowTiles) {
                 nEliminatedRows++;
             } else {
-                row.forEach(function (tile) {
+                row.forEach(function (t) {
                     // shift tiles downwards
-                    tile.y += nEliminatedRows;
+                    t.y += nEliminatedRows;
                     // re-add to master collection
-                    tiles.push(tile);
+                    tiles.push(t);
                 });
             }
         });
@@ -377,7 +380,7 @@ var grid;
 $(function () {
     var canvas = $('canvas').get(0);
     var ctx = canvas.getContext('2d');
-    // augment context object - probably a bad idea
+    // augment context object - maybe a bad idea
     ctx.drawLine = function (x1, y1, x2, y2) {
         this.beginPath();
         this.moveTo(x1, y1);
@@ -440,13 +443,13 @@ $(function () {
     }
 
     var delay = 1000 / REFRESH_HZ;
-    var lastLoopTime = new Date().getTime();
+    var lastLoopTime = new Date();
 
     function loop() {
         var now = new Date();
         if (!paused) {
             processPendingCommands();
-            //grid.update(now - lastLoopTime);
+            grid.update(now - lastLoopTime);
         }
         if (!grid.full) {
             lastLoopTime = now;
