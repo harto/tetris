@@ -20,7 +20,21 @@ var ROWS = 20,
         drop: 40,
         left: 37,
         right: 39
-    };
+    },
+
+    grid,
+    level = 0,
+    score = 0;
+
+/// misc
+
+function calcPoints(level, nCleared, nDropped) {
+    /* Simplified scoring system based on number of lines cleared and number of
+       grid rows dropped. Don't bother with T-spins etc. */
+    var pointsPerLine = [0, 40, 100, 300, 1200];
+    var n = pointsPerLine[nCleared];
+    return nDropped + n * (level + 1);
+}
 
 /// tiles
 
@@ -261,6 +275,12 @@ Grid.prototype = {
             t.draw(ctx);
         });
         this.currentPiece.draw(ctx);
+
+        // FIXME: should look nicer
+        ctx.font = 'bold 10px Helvetica, Arial, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillText(score, this.w * CELL_W - 5, 5);
     },
 
     update: function (delta) {
@@ -324,13 +344,14 @@ Grid.prototype = {
     },
 
     dropPiece: function () {
+        var nRowsDropped = 0;
         while (this.movePiece(0, 1)) {
-            // to the bottom
+            nRowsDropped++;
         }
-        this.consumePiece();
+        this.consumePiece(nRowsDropped);
     },
 
-    consumePiece: function () {
+    consumePiece: function (nRowsDropped) {
         var piece = this.currentPiece;
         // consume tiles
         var tiles = this.tiles;
@@ -354,28 +375,27 @@ Grid.prototype = {
 
         rows.reverse();
         tiles.splice(0, tiles.length);
-        var nEliminatedRows = 0;
+        var nRowsCleared = 0;
         var nMaxRowTiles = this.w;
         rows.forEach(function (row) {
             if (row.length === nMaxRowTiles) {
-                nEliminatedRows++;
+                nRowsCleared++;
             } else {
                 row.forEach(function (t) {
                     // shift tiles downwards
-                    t.y += nEliminatedRows;
+                    t.y += nRowsCleared;
                     // re-add to master collection
                     tiles.push(t);
                 });
             }
         });
 
+        score += calcPoints(level, nRowsCleared, nRowsDropped || 0);
         this.currentPiece = this.fetchNext();
     }
 };
 
 /// initialisation
-
-var grid;
 
 $(function () {
     var canvas = $('canvas').get(0);
