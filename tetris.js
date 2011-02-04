@@ -6,6 +6,10 @@
 
 /*global $, $V, window */
 
+function charCode(c) {
+    return c.charCodeAt(0);
+}
+
 var ROWS = 20,
     COLS = 10,
     ROWS_PER_LEVEL = 10,
@@ -14,11 +18,13 @@ var ROWS = 20,
     DEBUG = false,
 
     KEYS = {
-        pause: 32,
-        rotate: 38,
-        drop: 40,
-        left: 37,
-        right: 39
+        toggleDebug: charCode('D'),
+        togglePause: charCode('P'),
+        rotateLeft:  charCode('Z'),
+        rotateRight: charCode('X'),
+        moveLeft:    37, // left arrow
+        moveRight:   39, // right arrow
+        drop:        32  // space
     },
 
     CELL_W,
@@ -57,13 +63,6 @@ Tile.prototype = {
         ctx.fillStyle = this.colour;
         ctx.fillRect(this.x, this.y, 1, 1);
 
-        if (DEBUG && this.isAxis) {
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1 / CELL_W;
-            ctx.drawLine(this.x, this.y, this.x + 1, this.y + 1);
-            ctx.drawLine(this.x, this.y + 1, this.x + 1, this.y);
-        }
-
         ctx.restore();
     },
 
@@ -73,31 +72,35 @@ Tile.prototype = {
     }
 };
 
-/// pieces
+/*
+ * Pieces are defined as a collection of tiles arranged within a logical
+ * bounding square. This allows rotation according to the so-called Super
+ * Rotation System (http://tetris.wikia.com/wiki/SRS).
+ */
 
 function Piece(shape) {
 
     this.shape = shape;
 
-    var colour, layout;
+    var layout, colour;
     switch (shape) {
     case 'I':
         layout = [
-            '#X##'
+            '####'
         ];
         colour = 'red';
         break;
     case 'J':
         layout = [
-            '#X#',
-            '  #'
+            '#  ',
+            '###'
         ];
         colour = 'yellow';
         break;
     case 'L':
         layout = [
-            '#X#',
-            '#  '
+            '  #',
+            '###'
         ];
         colour = 'magenta';
         break;
@@ -110,21 +113,21 @@ function Piece(shape) {
         break;
     case 'S':
         layout = [
-            ' X#',
+            ' ##',
             '## '
         ];
         colour = 'cyan';
         break;
     case 'T':
         layout = [
-            '#X#',
-            ' # '
+            ' # ',
+            '###'
         ];
         colour = 'lime';
         break;
     case 'Z':
         layout = [
-            '#X ',
+            '## ',
             ' ##'
         ];
         colour = 'orange';
@@ -133,24 +136,21 @@ function Piece(shape) {
         throw new Error('unknown shape: ' + shape);
     }
 
+    // offset I-piece towards centre of bounding square
+    var yOffset = shape === 'I' ? 1 : 0;
+
     this.tiles = [];
     var row, x, y;
     for (y = 0; y < layout.length; y++) {
         row = layout[y];
         for (x = 0; x < row.length; x++) {
-            if (row[x] === ' ') {
-                continue;
-            }
-            var tile = new Tile(x, y, colour);
-            this.tiles.push(tile);
-            if (row[x] === 'X') {
-                this.axis = tile;
-                tile.isAxis = true;
+            if (row[x] === '#') {
+                this.tiles.push(new Tile(x, y + yOffset, colour));
             }
         }
     }
-    this.w = x;
-    this.h = y;
+
+    this.size = Math.max(x, y);
 }
 
 Piece.prototype = {
@@ -166,72 +166,49 @@ Piece.prototype = {
         if (DEBUG) {
             // bounding box
             ctx.strokeStyle = '#000';
-            ctx.strokeRect(0, 0, this.w * CELL_W, this.h * CELL_H);
+            ctx.strokeRect(0, 0, this.size * CELL_W, this.size * CELL_H);
         }
 
         ctx.restore();
     },
 
-    rotate: function () {
-        if (!this.axis) {
-            return;
-        }
-
-        var angle = 3 * Math.PI / 2;
-
-        /* The 'I', 'S' and 'Z' pieces are a bit special. They don't really
-           rotate all the way around an axis. They alternate between fixed
-           horizontal and vertical orientations. */
-        if ('ISZ'.indexOf(this.shape) !== -1 && this.h > this.w) {
-            // return to previous orientation
-            angle *= -1;
-        }
-
-        var axis = $V([this.axis.x, this.axis.y]);
+    rotate: function (steps) {
+        var angle = steps * 3 * Math.PI / 2;
+        var centre = (this.size - 1) / 2;
+        var axis = $V([centre, centre]);
 
         this.tiles.forEach(function (t) {
             var v = $V([t.x, t.y]).rotate(angle, axis).round();
             t.x = v.e(1);
             t.y = v.e(2);
         });
+    },
 
-        // recalculate position and dimensions based on new tile layout
-
-        var xs = this.tiles.map(function (t) { return t.x; }),
-            ys = this.tiles.map(function (t) { return t.y; }),
-            minX = Math.min.apply(null, xs),
-            minY = Math.min.apply(null, ys);
-
-        this.x += minX;
-        this.y += minY;
-
-        this.tiles.forEach(function (t) {
-            t.x -= minX;
-            t.y -= minY;
-        });
-
-        var tmp = this.w;
-        this.w = this.h;
-        this.h = tmp;
-
-        // TODO: need to check for illegal position after rotation
+    outOfBounds: function (gridW, gridH) {
+        var xs = this.tiles.map(function (t) { return t.x; });
+        var ys = this.tiles.map(function (t) { return t.y; });
+        return (
+            Math.min.apply(null, xs) + this.x < 0 ||
+            //Math.min.apply(null, ys) + this.y < 0 ||
+            gridW <= Math.max.apply(null, xs) + this.x ||
+            gridH <= Math.max.apply(null, ys) + this.y);
     },
 
     collidesWith: function (tile) {
-        var thisX = this.x, thisY = this.y;
+        var x = this.x, y = this.y;
         return (
             // bounds check
-            thisX <= tile.x && tile.x <= thisX + this.w &&
-            thisY <= tile.y && tile.y <= thisY + this.h &&
+            x <= tile.x && tile.x <= x + this.size &&
+            y <= tile.y && tile.y <= y + this.size &&
             // per-tile check
             this.tiles.some(function (t) {
-                return tile.x === thisX + t.x && tile.y === thisY + t.y;
+                return tile.x === x + t.x && tile.y === y + t.y;
             }));
     },
 
     toString: function () {
         return 'Piece[shape=' + this.shape + ', x=' + this.x + ', y=' + this.y +
-               ', w=' + this.w + ', h=' + this.h + ']';
+               ', size=' + this.size + ']';
     }
 };
 
@@ -311,15 +288,15 @@ Grid.prototype = {
     // check that a piece is in a valid position
     validPos: function (piece) {
         return !(
-            piece.x < 0 || this.w < piece.x + piece.w ||
-            piece.y < 0 || this.h < piece.y + piece.h ||
+            piece.outOfBounds(this.w, this.h) ||
             this.tiles.some(function (t) {
                 return piece.collidesWith(t);
             }));
     },
 
-    rotatePiece: function () {
-        this.currentPiece.rotate();
+    // attempt rotation and return flag indicating move validity
+    rotatePiece: function (steps) {
+        this.currentPiece.rotate(steps);
     },
 
     // attempt move and return flag indicating move validity
@@ -342,8 +319,8 @@ Grid.prototype = {
     fetchNext: function () {
         var next = Piece.random();
 
-        next.x = Math.floor((this.w - next.w) / 2);
-        next.y = 0;
+        next.x = Math.floor((this.w - next.size) / 2);
+        next.y = 5;
 
         if (this.validPos(next)) {
             return next;
@@ -448,9 +425,11 @@ $(function () {
         //console.log('pressed ' + keycodes[k]);
         e.preventDefault();
 
-        if (k === KEYS.pause) {
+        if (k === KEYS.togglePause) {
             // execute immediately
             paused = !paused;
+        } else if (k === KEYS.toggleDebug) {
+            DEBUG = !DEBUG;
         } else if (!paused) {
             // save game-level commands for later
             commandQueue.push(k);
@@ -461,16 +440,19 @@ $(function () {
         var k;
         while ((k = commandQueue.shift())) {
             switch (k) {
-            case KEYS.rotate:
-                grid.rotatePiece();
+            case KEYS.rotateLeft:
+                grid.rotatePiece(1);
+                break;
+            case KEYS.rotateRight:
+                grid.rotatePiece(-1);
                 break;
             case KEYS.drop:
                 grid.dropPiece();
                 break;
-            case KEYS.left:
+            case KEYS.moveLeft:
                 grid.movePiece(-1, 0);
                 break;
-            case KEYS.right:
+            case KEYS.moveRight:
                 grid.movePiece(1, 0);
                 break;
             default:
@@ -488,9 +470,9 @@ $(function () {
             processPendingCommands();
             grid.update(now - lastLoopTime);
         }
+        grid.draw(ctx);
         if (!grid.full) {
             lastLoopTime = now;
-            grid.draw(ctx);
             window.setTimeout(loop, delay);
         }
     }
