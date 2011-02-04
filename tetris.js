@@ -151,6 +151,8 @@ function Piece(shape) {
     }
 
     this.size = Math.max(x, y);
+    // FIXME: calculate according to size, offset
+    this.y = 0;
 }
 
 Piece.prototype = {
@@ -320,7 +322,6 @@ Grid.prototype = {
         var next = Piece.random();
 
         next.x = Math.floor((this.w - next.size) / 2);
-        next.y = 5;
 
         if (this.validPos(next)) {
             return next;
