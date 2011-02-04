@@ -1,10 +1,11 @@
 /*
- * A JavaScript Tetris clone.
+ * A minimal Tetris clone.
+ * https://www.github.com/harto/tetris
  *
- * Requires: jQuery 1.4.2, Sylvester 0.1.3
+ * Requires: jQuery 1.4.2
  */
 
-/*global $, $V, window */
+/*global $, window */
 
 function charCode(c) {
     return c.charCodeAt(0);
@@ -209,15 +210,17 @@ Piece.prototype = {
         ctx.restore();
     },
 
-    rotate: function (steps) {
-        var angle = steps * 3 * Math.PI / 2;
-        var centre = (this.size - 1) / 2;
-        var axis = $V([centre, centre]);
+    // rotates piece clockwise (1) or counterclockwise(-1)
+    rotate: function (direction) {
+        var xfac = direction;
+        var yfac = -direction;
+        var offset = (this.size - 1) / 2;
 
         this.tiles.forEach(function (t) {
-            var v = $V([t.x, t.y]).rotate(angle, axis).round();
-            t.x = v.e(1);
-            t.y = v.e(2);
+            var x = ((t.y - offset) * xfac) + offset;
+            var y = ((t.x - offset) * yfac) + offset;
+            t.x = x;
+            t.y = y;
         });
     },
 
