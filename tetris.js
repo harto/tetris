@@ -287,18 +287,32 @@ Grid.prototype = {
         this.msSinceLastStep = 0;
     },
 
-    // check that a piece is in a valid position
-    validPos: function (piece) {
-        return !(
-            piece.outOfBounds(this.w, this.h) ||
-            this.tiles.some(function (t) {
-                return piece.collidesWith(t);
-            }));
+    outOfBounds: function (piece) {
+        return piece.outOfBounds(this.w, this.h);
     },
 
-    // attempt rotation and return flag indicating move validity
+    colliding: function (piece) {
+        return this.tiles.some(function (t) {
+            return piece.collidesWith(t);
+        });
+    },
+
+    // attempt rotation
     rotatePiece: function (steps) {
-        this.currentPiece.rotate(steps);
+        var piece = this.currentPiece;
+
+        piece.rotate(steps);
+
+        var outOfBounds = this.outOfBounds(piece);
+        var colliding = this.colliding(piece);
+
+        if (colliding ||
+            (outOfBounds &&
+             // try wall kick
+             !(this.movePiece(1, 0) || this.movePiece(-1, 0)))) {
+            // rollback
+            this.currentPiece.rotate(-steps);
+        }
     },
 
     // attempt move and return flag indicating move validity
@@ -308,14 +322,15 @@ Grid.prototype = {
         piece.x += dx;
         piece.y += dy;
 
-        if (this.validPos(piece)) {
-            return true;
-        } else {
+        var valid = !(this.outOfBounds(piece) || this.colliding(piece));
+
+        if (!valid) {
             // rollback
             piece.x -= dx;
             piece.y -= dy;
-            return false;
         }
+
+        return valid;
     },
 
     fetchNext: function () {
@@ -323,13 +338,13 @@ Grid.prototype = {
 
         next.x = Math.floor((this.w - next.size) / 2);
 
-        if (this.validPos(next)) {
-            return next;
-        } else {
+        if (this.colliding(next)) {
             // game over
             this.full = true;
             return null;
         }
+
+        return next;
     },
 
     dropPiece: function () {
@@ -471,8 +486,8 @@ $(function () {
             processPendingCommands();
             grid.update(now - lastLoopTime);
         }
-        grid.draw(ctx);
         if (!grid.full) {
+            grid.draw(ctx);
             lastLoopTime = now;
             window.setTimeout(loop, delay);
         }
