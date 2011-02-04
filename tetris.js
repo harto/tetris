@@ -31,7 +31,7 @@ var ROWS = 20,
     CELL_H,
 
     grid,
-    level = 0,
+    level = 1,
     rowsRemaining = ROWS_PER_LEVEL,
     score = 0,
     paused = false;
@@ -43,7 +43,7 @@ function calcPoints(level, nCleared, nDropped) {
        grid rows dropped. Don't bother with T-spins etc. */
     var pointsPerLine = [0, 40, 100, 300, 1200];
     var n = pointsPerLine[nCleared];
-    return nDropped + n * (level + 1);
+    return nDropped + n * level;
 }
 
 /// tiles
