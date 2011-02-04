@@ -18,23 +18,33 @@ var ROWS = 20,
     DEBUG = false,
 
     KEYS = {
-        toggleDebug: charCode('D'),
-        togglePause: charCode('P'),
         rotateLeft:  charCode('Z'),
         rotateRight: charCode('X'),
         moveLeft:    37, // left arrow
         moveRight:   39, // right arrow
-        drop:        32  // space
+        drop:        32, // space
+
+        toggleDebug: charCode('D'),
+        togglePause: charCode('P'),
+        newGame:     charCode('N')
     },
+    // reverse-lookup
+    KEYCODES = {},
 
     CELL_W,
     CELL_H,
 
+    commandQueue = [],
+
     grid,
-    level = 1,
-    rowsRemaining = ROWS_PER_LEVEL,
-    score = 0,
-    paused = false;
+    level,
+    rowsRemaining,
+    score,
+    paused;
+
+for (var k in KEYS) {
+    KEYCODES[KEYS[k]] = k;
+}
 
 /// misc
 
@@ -44,6 +54,31 @@ function calcPoints(level, nCleared, nDropped) {
     var pointsPerLine = [0, 40, 100, 300, 1200];
     var n = pointsPerLine[nCleared];
     return nDropped + n * level;
+}
+
+function processPendingCommands() {
+    var k;
+    while ((k = commandQueue.shift())) {
+        switch (k) {
+        case KEYS.rotateLeft:
+            grid.rotatePiece(1);
+            break;
+        case KEYS.rotateRight:
+            grid.rotatePiece(-1);
+            break;
+        case KEYS.drop:
+            grid.dropPiece();
+            break;
+        case KEYS.moveLeft:
+            grid.movePiece(-1, 0);
+            break;
+        case KEYS.moveRight:
+            grid.movePiece(1, 0);
+            break;
+        default:
+            throw new Error('unmapped keycode: ' + k);
+        }
+    }
 }
 
 /// tiles
@@ -151,8 +186,8 @@ function Piece(shape) {
     }
 
     this.size = Math.max(x, y);
-    // FIXME: calculate according to size, offset
-    this.y = 0;
+    this.x = Math.floor((COLS - this.size) / 2);
+    this.y = 0; // FIXME: calculate according to size, offset
 }
 
 Piece.prototype = {
@@ -186,14 +221,14 @@ Piece.prototype = {
         });
     },
 
-    outOfBounds: function (gridW, gridH) {
+    outOfBounds: function () {
         var xs = this.tiles.map(function (t) { return t.x; });
         var ys = this.tiles.map(function (t) { return t.y; });
         return (
             Math.min.apply(null, xs) + this.x < 0 ||
             //Math.min.apply(null, ys) + this.y < 0 ||
-            gridW <= Math.max.apply(null, xs) + this.x ||
-            gridH <= Math.max.apply(null, ys) + this.y);
+            COLS <= Math.max.apply(null, xs) + this.x ||
+            ROWS <= Math.max.apply(null, ys) + this.y);
     },
 
     collidesWith: function (tile) {
@@ -221,12 +256,8 @@ Piece.random = function () {
 
 /// playing area
 
-function Grid(w, h) {
-    this.w = w;
-    this.h = h;
-
+function Grid() {
     this.msSinceLastStep = 0;
-
     this.tiles = [];
     this.currentPiece = this.fetchNext();
 }
@@ -238,17 +269,17 @@ Grid.prototype = {
 
         ctx.scale(CELL_W, CELL_H);
         ctx.fillStyle = '#FFF';
-        ctx.fillRect(0, 0, this.w, this.h);
+        ctx.fillRect(0, 0, COLS, ROWS);
 
         if (DEBUG) {
             // draw gridlines
             ctx.strokeStyle = '#999';
             ctx.lineWidth = 0.5 / CELL_W;
-            for (var x = 1; x < this.w; x++) {
-                ctx.drawLine(x, 0, x, this.h);
+            for (var x = 1; x < COLS; x++) {
+                ctx.drawLine(x, 0, x, ROWS);
             }
-            for (var y = 1; y < this.h; y++) {
-                ctx.drawLine(0, y, this.w, y);
+            for (var y = 1; y < ROWS; y++) {
+                ctx.drawLine(0, y, COLS, y);
             }
         }
 
@@ -269,7 +300,7 @@ Grid.prototype = {
         if (paused) {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('<Paused>', this.w * CELL_W / 2, this.h * CELL_H / 2);
+            ctx.fillText('<Paused>', COLS * CELL_W / 2, ROWS * CELL_H / 2);
         }
     },
 
@@ -287,10 +318,6 @@ Grid.prototype = {
         this.msSinceLastStep = 0;
     },
 
-    outOfBounds: function (piece) {
-        return piece.outOfBounds(this.w, this.h);
-    },
-
     colliding: function (piece) {
         return this.tiles.some(function (t) {
             return piece.collidesWith(t);
@@ -303,11 +330,8 @@ Grid.prototype = {
 
         piece.rotate(steps);
 
-        var outOfBounds = this.outOfBounds(piece);
-        var colliding = this.colliding(piece);
-
-        if (colliding ||
-            (outOfBounds &&
+        if (this.colliding(piece) ||
+            (piece.outOfBounds() &&
              // try wall kick
              !(this.movePiece(1, 0) || this.movePiece(-1, 0)))) {
             // rollback
@@ -322,7 +346,7 @@ Grid.prototype = {
         piece.x += dx;
         piece.y += dy;
 
-        var valid = !(this.outOfBounds(piece) || this.colliding(piece));
+        var valid = !(piece.outOfBounds() || this.colliding(piece));
 
         if (!valid) {
             // rollback
@@ -335,8 +359,6 @@ Grid.prototype = {
 
     fetchNext: function () {
         var next = Piece.random();
-
-        next.x = Math.floor((this.w - next.size) / 2);
 
         if (this.colliding(next)) {
             // game over
@@ -380,9 +402,8 @@ Grid.prototype = {
         rows.reverse();
         tiles.splice(0, tiles.length);
         var nRowsCleared = 0;
-        var nMaxRowTiles = this.w;
         rows.forEach(function (row) {
-            if (row.length === nMaxRowTiles) {
+            if (row.length === COLS) {
                 nRowsCleared++;
             } else {
                 row.forEach(function (t) {
@@ -408,74 +429,17 @@ Grid.prototype = {
 
 /// initialisation
 
-$(function () {
-    var canvas = $('canvas').get(0);
-    var ctx = canvas.getContext('2d');
-    // augment context object - maybe a bad idea
-    ctx.drawLine = function (x1, y1, x2, y2) {
-        this.beginPath();
-        this.moveTo(x1, y1);
-        this.lineTo(x2, y2);
-        this.stroke();
-    };
+var loopTimer,
+    ctx;
 
-    CELL_W = canvas.width / COLS;
-    CELL_H = canvas.height / ROWS;
+function newGame() {
+    window.clearTimeout(loopTimer);
 
-    grid = new Grid(COLS, ROWS);
-
-    // reverse-keycode index
-    var keycodes = {};
-    for (var k in KEYS) {
-        keycodes[KEYS[k]] = k;
-    }
-
-    var commandQueue = [];
-
-    $(window).keydown(function (e) {
-        var k = e.which;
-        if (!keycodes[k]) {
-            return;
-        }
-
-        //console.log('pressed ' + keycodes[k]);
-        e.preventDefault();
-
-        if (k === KEYS.togglePause) {
-            // execute immediately
-            paused = !paused;
-        } else if (k === KEYS.toggleDebug) {
-            DEBUG = !DEBUG;
-        } else if (!paused) {
-            // save game-level commands for later
-            commandQueue.push(k);
-        }
-    });
-
-    function processPendingCommands() {
-        var k;
-        while ((k = commandQueue.shift())) {
-            switch (k) {
-            case KEYS.rotateLeft:
-                grid.rotatePiece(1);
-                break;
-            case KEYS.rotateRight:
-                grid.rotatePiece(-1);
-                break;
-            case KEYS.drop:
-                grid.dropPiece();
-                break;
-            case KEYS.moveLeft:
-                grid.movePiece(-1, 0);
-                break;
-            case KEYS.moveRight:
-                grid.movePiece(1, 0);
-                break;
-            default:
-                throw new Error('unmapped keycode: ' + k);
-            }
-        }
-    }
+    grid = new Grid();
+    level = 1;
+    rowsRemaining = ROWS_PER_LEVEL;
+    score = 0;
+    paused = false;
 
     var delay = 1000 / REFRESH_HZ;
     var lastLoopTime = new Date();
@@ -489,10 +453,49 @@ $(function () {
         if (!grid.full) {
             grid.draw(ctx);
             lastLoopTime = now;
-            window.setTimeout(loop, delay);
+            loopTimer = window.setTimeout(loop, delay);
         }
     }
 
-    window.setTimeout(loop, delay);
+    loopTimer = window.setTimeout(loop, delay);
+}
+
+$(function () {
+    var canvas = $('canvas').get(0);
+    ctx = canvas.getContext('2d');
+    // augment context object - maybe a bad idea
+    ctx.drawLine = function (x1, y1, x2, y2) {
+        this.beginPath();
+        this.moveTo(x1, y1);
+        this.lineTo(x2, y2);
+        this.stroke();
+    };
+
+    CELL_W = canvas.width / COLS;
+    CELL_H = canvas.height / ROWS;
+
+    $(window).keydown(function (e) {
+        var k = e.which;
+        if (!KEYCODES[k]) {
+            return;
+        }
+
+        //console.log('pressed ' + keycodes[k]);
+        e.preventDefault();
+
+        if (k === KEYS.togglePause) {
+            // execute immediately
+            paused = !paused;
+        } else if (k === KEYS.toggleDebug) {
+            DEBUG = !DEBUG;
+        } else if (k === KEYS.newGame) {
+            newGame();
+        } else if (!paused) {
+            // save game-level commands for later
+            commandQueue.push(k);
+        }
+    });
+
+    newGame();
 });
 
