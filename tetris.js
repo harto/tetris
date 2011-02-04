@@ -27,7 +27,8 @@ var ROWS = 20,
     grid,
     level = 0,
     rowsRemaining = ROWS_PER_LEVEL,
-    score = 0;
+    score = 0,
+    paused = false;
 
 /// misc
 
@@ -285,6 +286,12 @@ Grid.prototype = {
         ctx.textBaseline = 'top';
         ctx.fillText('Score: ' + score, 5, 5);
         ctx.fillText('Level: ' + level, 5, 20);
+
+        if (paused) {
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('<Paused>', this.w * CELL_W / 2, this.h * CELL_H / 2);
+        }
     },
 
     update: function (delta) {
@@ -431,7 +438,6 @@ $(function () {
     }
 
     var commandQueue = [];
-    var paused;
 
     $(window).keydown(function (e) {
         var k = e.which;
