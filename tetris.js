@@ -85,49 +85,49 @@ function Piece(shape) {
         layout = [
             '#X##'
         ];
-        colour = '#F00';
+        colour = 'red';
         break;
     case 'J':
         layout = [
             '#X#',
             '  #'
         ];
-        colour = '#FF0';
+        colour = 'yellow';
         break;
     case 'L':
         layout = [
             '#X#',
             '#  '
         ];
-        colour = '#F0F';
+        colour = 'magenta';
         break;
     case 'O':
         layout = [
             '##',
             '##'
         ];
-        colour = '#00F';
+        colour = 'blue';
         break;
     case 'S':
         layout = [
             ' X#',
             '## '
         ];
-        colour = '#0FF';
+        colour = 'cyan';
         break;
     case 'T':
         layout = [
             '#X#',
             ' # '
         ];
-        colour = '#0F0';
+        colour = 'lime';
         break;
     case 'Z':
         layout = [
             '#X ',
             ' ##'
         ];
-        colour = '#F90';
+        colour = 'orange';
         break;
     default:
         throw new Error('unknown shape: ' + shape);
