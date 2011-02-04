@@ -212,13 +212,10 @@ Piece.prototype = {
 
     // rotates piece clockwise (1) or counterclockwise(-1)
     rotate: function (direction) {
-        var xfac = direction;
-        var yfac = -direction;
         var offset = (this.size - 1) / 2;
-
         this.tiles.forEach(function (t) {
-            var x = ((t.y - offset) * xfac) + offset;
-            var y = ((t.x - offset) * yfac) + offset;
+            var x = ((t.y - offset) * direction) + offset;
+            var y = ((t.x - offset) * -direction) + offset;
             t.x = x;
             t.y = y;
         });
