@@ -5,6 +5,13 @@ body {
   font-size: 70%;
   font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
+#upgrade {
+  width: 20em;
+  background: #FCC;
+  font-weight: bold;
+  margin: 0;
+  padding: 1em;
+}
 canvas {
   border: 2px #333 solid;
   background: #CCC;
