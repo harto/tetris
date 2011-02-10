@@ -219,7 +219,7 @@ Piece.prototype = {
         ctx.restore();
     },
 
-    // rotates piece clockwise (1) or counterclockwise(-1)
+    // Rotate piece clockwise (1) or counterclockwise (-1)
     rotate: function (direction) {
         var offset = (this.size - 1) / 2;
         this.tiles.forEach(function (t) {
@@ -235,7 +235,6 @@ Piece.prototype = {
         var ys = this.tiles.map(function (t) { return t.y; });
         return (
             Math.min.apply(null, xs) + this.x < 0 ||
-            //Math.min.apply(null, ys) + this.y < 0 ||
             COLS <= Math.max.apply(null, xs) + this.x ||
             ROWS <= Math.max.apply(null, ys) + this.y);
     },
@@ -316,7 +315,6 @@ Grid.prototype = {
     update: function () {
         this.framesSinceDrop++;
 
-        // TODO: speed should be based on current level
         if (this.framesSinceDrop < calcFramesPerDrop(level)) {
             return;
         }
