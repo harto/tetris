@@ -15,7 +15,9 @@ var ROWS = 20,
     COLS = 10,
     ROWS_PER_LEVEL = 10,
 
-    REFRESH_HZ = 12,
+    UPDATE_HZ = 20,
+    UPDATE_DELAY = 1000 / UPDATE_HZ,
+
     DEBUG = false,
 
     KEYS = {
@@ -48,6 +50,11 @@ for (var k in KEYS) {
 }
 
 /// misc
+
+function calcFramesPerDrop(level) {
+    // Calculate number of frames to wait between row drops.
+    return Math.max(1, UPDATE_HZ - level);
+}
 
 function calcPoints(level, nCleared, nDropped) {
     /* Simplified scoring system based on number of lines cleared and number of
@@ -257,7 +264,7 @@ Piece.random = function () {
 /// playing area
 
 function Grid() {
-    this.msSinceLastStep = 0;
+    this.framesSinceDrop = 0;
     this.tiles = [];
     this.currentPiece = this.fetchNext();
 }
@@ -304,10 +311,11 @@ Grid.prototype = {
         }
     },
 
-    update: function (delta) {
-        this.msSinceLastStep += delta;
+    update: function () {
+        this.framesSinceDrop++;
+
         // TODO: speed should be based on current level
-        if (this.msSinceLastStep < 500) {
+        if (this.framesSinceDrop < calcFramesPerDrop(level)) {
             return;
         }
 
@@ -315,7 +323,7 @@ Grid.prototype = {
             this.consumePiece();
         }
 
-        this.msSinceLastStep = 0;
+        this.framesSinceDrop = 0;
     },
 
     colliding: function (piece) {
@@ -429,11 +437,11 @@ Grid.prototype = {
 
 /// initialisation
 
-var loopTimer,
+var timer,
     ctx;
 
 function newGame() {
-    window.clearTimeout(loopTimer);
+    window.clearTimeout(timer);
 
     grid = new Grid();
     level = 1;
@@ -441,23 +449,23 @@ function newGame() {
     score = 0;
     paused = false;
 
-    var delay = 1000 / REFRESH_HZ;
-    var lastLoopTime = new Date();
+    var nextLoopTime = +new Date;
 
     function loop() {
-        var now = new Date();
         if (!paused) {
             processPendingCommands();
-            grid.update(now - lastLoopTime);
+            grid.update();
         }
         if (!grid.full) {
             grid.draw(ctx);
-            lastLoopTime = now;
-            loopTimer = window.setTimeout(loop, delay);
+            nextLoopTime += UPDATE_DELAY;
+            var delay = nextLoopTime - new Date;
+            // FIXME: recover if falling behind
+            timer = window.setTimeout(loop, Math.max(0, delay));
         }
     }
 
-    loopTimer = window.setTimeout(loop, delay);
+    timer = window.setTimeout(loop, UPDATE_DELAY);
 }
 
 $(function () {
