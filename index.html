@@ -3,23 +3,45 @@
 
 <head>
   <title>Tetris</title>
-
-  <style type="text/css">
-    body {
-      background: #CCC;
-    }
-    canvas {
-      /* to indicate loading */
-      background: blue;
-    }
-  </style>
-
+  <link rel="stylesheet" type="text/css" href="style.css" />
   <script src="jquery-1.4.2.js"></script>
   <script src="tetris.js"></script>
 </head>
 
 <body>
   <canvas width="200" height="400"></canvas>
+
+  <div id="cruft">
+    <dl id="keymap">
+      <dt><kbd>&larr;</kbd></dt>
+      <dd>left</dd>
+      
+      <dt><kbd>&rarr;</kbd>
+      </dt><dd>right</dd>
+      
+      <dt><kbd>SPC</kbd>
+      </dt><dd>drop</dd>
+      
+      <dt><kbd>Z</kbd>
+      </dt><dd>rotate counterclockwise</dd>
+      
+      <dt><kbd>X</kbd>
+      </dt><dd>rotate clockwise</dd>
+      
+      <dt><kbd>P</kbd>
+      </dt><dd>pause</dd>
+      
+      <dt><kbd>N</kbd>
+      </dt><dd>new game</dd>
+      
+      <dt><kbd>D</kbd>
+      </dt><dd>debug</dd>
+    </dl>
+
+    <p id="info">
+      <a href="https://www.github.com/harto/tetris">View source on Github</a>
+    </p>
+  </div>
 </body>
 
 </html>
