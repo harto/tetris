@@ -46,7 +46,9 @@ var ROWS = 20,
     paused;
 
 for (var k in KEYS) {
-    KEYCODES[KEYS[k]] = k;
+    if (KEYS.hasOwnProperty(k)) {
+        KEYCODES[KEYS[k]] = k;
+    }
 }
 
 /// misc
@@ -449,7 +451,7 @@ function newGame() {
     score = 0;
     paused = false;
 
-    var nextLoopTime = +new Date;
+    var nextLoopTime = +new Date();
 
     function loop() {
         if (!paused) {
@@ -459,8 +461,8 @@ function newGame() {
         if (!grid.full) {
             grid.draw(ctx);
             nextLoopTime += UPDATE_DELAY;
-            var delay = nextLoopTime - new Date;
-            // FIXME: recover if falling behind
+            var delay = nextLoopTime - new Date();
+            // TODO: recover if falling behind
             timer = window.setTimeout(loop, Math.max(0, delay));
         }
     }
@@ -491,15 +493,19 @@ $(function () {
         //console.log('pressed ' + keycodes[k]);
         e.preventDefault();
 
-        if (k === KEYS.togglePause) {
-            // execute immediately
+        /* Execute system commands instantaneously. Enqueue game commands for
+           processing within main loop. */
+        switch (k) {
+        case KEYS.togglePause:
             paused = !paused;
-        } else if (k === KEYS.toggleDebug) {
+            break;
+        case KEYS.toggleDebug:
             DEBUG = !DEBUG;
-        } else if (k === KEYS.newGame) {
+            break;
+        case KEYS.newGame:
             newGame();
-        } else if (!paused) {
-            // save game-level commands for later
+            break;
+        default:
             commandQueue.push(k);
         }
     });
